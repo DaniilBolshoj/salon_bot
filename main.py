@@ -6,6 +6,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
+from database.db import create_tables
 
 # ========================
 TOKEN = "8251523047:AAERjuRUJJQSewgORj58yRwxvkW9v7P0b2E"  # <- заменяй

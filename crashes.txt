@@ -1,0 +1,76 @@
+c:\Users\Daniil\Desktop\salon_bot\bot.py:341: RuntimeWarning: coroutine 'get_master_slots' was never awaited
+  slots = [s async for s in get_master_slots(master)]
+RuntimeWarning: Enable tracemalloc to get the object allocation traceback
+Cause exception while process update id=473985501 by bot id=8251523047
+TypeError: 'async for' requires an object with __aiter__ method, got coroutine
+Traceback (most recent call last):
+  File "C:\Python313\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 309, in _process_update
+    response = await self.feed_update(bot, update, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 158, in feed_update
+    response = await self.update.wrap_outer_middleware(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<7 lines>...
+    )
+    ^
+  File "C:\Python313\Lib\site-packages\aiogram\dispatcher\middlewares\error.py", line 25, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\site-packages\aiogram\dispatcher\middlewares\user_context.py", line 56, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\site-packages\aiogram\fsm\middleware.py", line 42, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 276, in _listen_update
+    return await self.propagate_event(update_type=update_type, event=event, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        observer=observer, update_type=update_type, event=telegram_event, **data
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Python313\Lib\site-packages\aiogram\dispatcher\router.py", line 166, in _propagate_event
+    response = await observer.trigger(event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "c:\Users\Daniil\Desktop\salon_bot\bot.py", line 341, in cb_master
+    slots = [s async for s in get_master_slots(master)]
+                              ~~~~~~~~~~~~~~~~^^^^^^^^
+TypeError: 'async for' requires an object with __aiter__ method, got coroutine
+
+
+
+@router.callback_query(F.data.startswith("svc:"))
+async def select_service(callback: types.CallbackQuery):
+    service = callback.data.split(":", 1)[1]
+    async with aiosqlite.connect(DB_PATH) as db:
+        cur = await db.execute("SELECT name FROM masters WHERE services LIKE ?", (f"%{service}%",))
+        masters = [row[0] for row in await cur.fetchall()]
+
+    if not masters:
+        await callback.answer("❌ Нет доступных мастеров для этой услуги.")
+        return
+
+    kb = InlineKeyboardBuilder()
+    for m in masters:
+        kb.button(text=m, callback_data=f"master:{service}:{m}")
+    kb.adjust(2)
+    await callback.message.edit_text(f"💅 Услуга: <b>{service}</b>\nВыберите мастера:", reply_markup=kb.as_markup())
+    await callback.answer()

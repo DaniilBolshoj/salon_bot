@@ -4,3 +4,4 @@ __pycache__/
 .env
 .gitapi.env
 .env
+api.env

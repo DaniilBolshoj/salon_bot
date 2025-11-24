@@ -18,7 +18,6 @@ import aiosqlite
 import re
 from datetime import datetime, timedelta
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from bot import dp
 from aiogram.types import CallbackQuery
 
 router = Router()
@@ -29,6 +28,17 @@ def weekday_from_date(date_str: str):
     for k, v in WEEKDAYS.items():
         if v == dt.weekday():
             return k
+        
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+@router.message(F.text == "📅 Записаться")
+async def book_appointment(msg: types.Message):
+    services = ["Стрижка", "Окрашивание", "Маникюр", "Массаж"]
+    kb = InlineKeyboardBuilder()
+    for s in services:
+        kb.button(text=s, callback_data=f"svc:{s}")
+    kb.adjust(2)
+    await msg.answer("💇 Выберите услугу:", reply_markup=kb.as_markup())
 
 # ===================== НАЧАЛО ЗАПИСИ =====================
 async def begin_booking(m: types.Message):

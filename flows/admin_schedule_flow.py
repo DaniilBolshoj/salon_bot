@@ -1,0 +1,1 @@
+# Здесь будут callback-хендлеры для start_time, end_time, slot_duration

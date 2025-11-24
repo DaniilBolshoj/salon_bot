@@ -1,18 +1,26 @@
-import sys
-import os
 import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from handlers.users import start
+
 from utils.config_loader import BOT_TOKEN
-from database.database import init_db
-from handlers import register_handlers
+from database import init_db
 
-# Добавляем текущую директорию в PATH
-sys.path.append(os.path.dirname(__file__))
+# Новые маршрутизаторы
+from handlers.users.start import router as start_router
+from handlers.users.menu import router as menu_router
+from handlers.users.booking import router as booking_router
+from handlers.users.contacts import router as contacts_router
 
-# Инициализация бота с HTML по умолчанию
+from handlers.admin.admin_menu import router as admin_menu_router
+#from handlers.admin.masters import router as admin_masters_router
+from handlers.admin.schedule import router as admin_schedule_router
+#from handlers.admin.services import router as admin_services_router
+
+from flows.universal_router import router as universal_router
+
+
+# Инициализация бота
 bot = Bot(
     token=BOT_TOKEN,
     default=DefaultBotProperties(parse_mode=ParseMode.HTML)
@@ -20,22 +28,40 @@ bot = Bot(
 
 dp = Dispatcher()
 
+
 async def on_startup():
     print("🔄 Инициализация базы данных...")
     await init_db()
     print("✅ База данных готова.")
 
-    # Регистрируем все хэндлеры
-    dp.include_router(start.router)
-    print("✅ Хэндлеры успешно подключены.")
+    print("🔗 Подключение роутеров...")
 
-async def main_run():
+    # USER роутеры
+    dp.include_router(start_router)
+    dp.include_router(menu_router)
+    dp.include_router(booking_router)
+    dp.include_router(contacts_router)
+
+    # ADMIN роутеры
+    dp.include_router(admin_menu_router)
+    #dp.include_router(admin_masters_router)
+    dp.include_router(admin_schedule_router)
+    #dp.include_router(admin_services_router)
+
+    # UNIVERSAL FLOW router (замена universal_input_handler)
+    dp.include_router(universal_router)
+
+    print("✅ Все хэндлеры успешно подключены.")
+
+
+async def bot_run():
     await on_startup()
     print("🤖 Бот запущен и ждёт сообщения...")
     await dp.start_polling(bot)
 
+
 if __name__ == "__main__":
     try:
-        asyncio.run(main_run())
+        asyncio.run(bot_run())
     except (KeyboardInterrupt, SystemExit):
         print("🛑 Бот остановлен.")

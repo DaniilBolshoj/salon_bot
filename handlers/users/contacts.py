@@ -1,0 +1,27 @@
+from aiogram import Router, types
+
+router = Router()
+
+@router.message(lambda m: m.text == "🏢 О нас")
+async def about(m: types.Message):
+    await m.answer("💖 Салон красоты — запись через бота. Для вопросов используйте Контакты.")
+
+@router.message(lambda m: m.text == "💇 Услуги")
+async def services_list(m: types.Message):
+    text = (
+        "💇 Наши услуги:\n"
+        "• Стрижка — 20€\n"
+        "• Окрашивание — 35€\n"
+        "• Маникюр — 15€\n"
+        "• Массаж — 40€"
+    )
+    await m.answer(text)
+
+@router.message(lambda m: m.text == "💬 Контакты")
+async def contacts(m: types.Message):
+    await m.answer("📞 Телефон: +370 XXX XXX\n📍 Адрес: Вильнюс\n"
+                   "Нажмите «📅 Записаться» для выбора времени.")
+
+@router.message(lambda m: m.text == "🧠 AI-помощник")
+async def ai_helper(m: types.Message):
+    await m.answer("🤖 AI-помощник временно недоступен. Попробуйте позже.")

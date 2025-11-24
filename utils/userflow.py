@@ -1,5 +1,5 @@
 import phonenumbers
-from database.database import get_dates_window
+from database import get_dates_window
 
 userflow = {}  # user_id: {"service": str, "master": str, "day": str, "time": str, "step": str}
 

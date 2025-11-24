@@ -5,3 +5,4 @@ __pycache__/
 .gitapi.env
 .env
 api.env
+crashes.txt

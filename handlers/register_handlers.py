@@ -1,11 +1,12 @@
 from aiogram.filters import Command
 from aiogram import F, Router
 from aiogram import Dispatcher
-from handlers import start, booking, feedback
+from handlers.users import feedback
 
-from handlers.start import cmd_start, admin_menu_kb, remove_master_cmd, universal_input_handler
-from handlers.booking import begin_booking, cb_service, cb_master, cb_day, cb_time
-from handlers.feedback import show_reviews
+from handlers.users.start import cmd_start, admin_menu_kb, remove_master_cmd, universal_input_handler
+from handlers.users.booking import begin_booking, cb_service, cb_master, cb_day, cb_time
+from handlers.users.feedback import show_reviews
+from handlers.users import booking, start
 
 router = Router()
 

@@ -4,9 +4,10 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from utils.config import BOT_TOKEN
-from database.db_helpers import init_db
-from handlers import register_handlers, start
+from handlers.users import start
+from utils.config_loader import BOT_TOKEN
+from database.database import init_db
+from handlers import register_handlers
 
 # Добавляем текущую директорию в PATH
 sys.path.append(os.path.dirname(__file__))

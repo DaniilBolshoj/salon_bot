@@ -4,17 +4,18 @@ from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, Message, InlineKe
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 import aiosqlite
 from datetime import datetime, timedelta
-from handlers.booking import is_slot_available, is_valid_phone, parse_manual_input, router as booking_router, begin_booking
+from handlers.users.booking import is_slot_available, is_valid_phone, parse_manual_input, router as booking_router, begin_booking
 
 from database import (
     get_setting, DB_PATH, create_appointment_db,
     list_appointments_db, add_master, remove_master,
     get_dates_window, set_master_days, set_master_slots, get_all_masters, WEEKDAYS
 )
-from utils.config import OWNER_ID
-from utils.utils import userflow, validate_phone_format, phone_belongs_to_country
+from utils.config_loader import OWNER_ID
+from utils.userflow import userflow, validate_phone_format, phone_belongs_to_country
 import re
-from utils.keyboard import main_menu_kb, admin_menu_kb, settings_kb
+from keyboards.main_keyboard import main_menu_kb
+from keyboards.admin_keyboard import admin_menu_kb, settings_kb
 import json
 import os 
 
@@ -29,6 +30,15 @@ service_duration = 1  # в часах или минутах
 
 router.include_router(booking_router)
 
+# =================== СТАРТ ===================
+@router.message(Command("start"))
+async def cmd_start(msg: types.Message):
+    if msg.from_user.id == OWNER_ID:
+        await msg.answer("👑 Добро пожаловать, админ!", reply_markup=admin_menu_kb())
+    else:
+        await msg.answer("👋 Добро пожаловать! Нажмите «📅 Записаться», чтобы выбрать услугу.",
+                         reply_markup=main_menu_kb())
+        
 # =================== InlineKeyboard для конкретного мастера ===================
 def get_master_inline_kb(master: dict):
     kb = InlineKeyboardBuilder()
@@ -42,15 +52,6 @@ def get_master_inline_kb(master: dict):
     kb.button(text="⬅️ Назад", callback_data="back_masters")
     kb.adjust(1)
     return kb.as_markup()
-
-# =================== СТАРТ ===================
-@router.message(Command("start"))
-async def cmd_start(msg: types.Message):
-    if msg.from_user.id == OWNER_ID:
-        await msg.answer("👑 Добро пожаловать, админ!", reply_markup=admin_menu_kb())
-    else:
-        await msg.answer("👋 Добро пожаловать! Нажмите «📅 Записаться», чтобы выбрать услугу.",
-                         reply_markup=main_menu_kb())
 
 # =================== АДМИН ===================
 @router.message(F.text == "📅 Просмотр записей")

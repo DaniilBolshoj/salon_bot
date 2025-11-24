@@ -12,13 +12,13 @@ from database import (
     get_master_slots_auto,
     get_masters_by_service
 )
-from utils.utils import userflow
-from utils.config import BOT_TOKEN
+from utils.userflow import userflow
+from utils.config_loader import BOT_TOKEN
 import aiosqlite
 import re
 from datetime import datetime, timedelta
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from main import dp
+from bot import dp
 from aiogram.types import CallbackQuery
 
 router = Router()

@@ -1,17 +1,14 @@
 from aiogram import types, F, Bot, Router
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from database import (
-    list_services,
-    get_all_masters,
-    get_master_days,
-    get_master_slots,
-    slot_taken,
-    user_has_appointment_db,
-    create_appointment_db,
-    WEEKDAYS,
+from database.masters import (
+    get_masters_by_service,
     get_master_slots_auto,
-    get_masters_by_service
+    WEEKDAYS
 )
+from database.schedule import get_master_days
+from database.appointments import create_appointment_db
+from database.appointments import user_has_appointment_db
+from database.services import list_services
 from utils.userflow import userflow
 from utils.config_loader import BOT_TOKEN
 import aiosqlite

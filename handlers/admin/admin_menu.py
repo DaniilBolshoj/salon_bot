@@ -1,7 +1,8 @@
 from aiogram import Router, F, types
 from keyboards.admin_keyboard import admin_menu_kb, settings_kb
 from utils.config_loader import OWNER_ID
-from database import list_appointments_db, get_all_masters, remove_master
+from database.appointments import list_appointments_db
+from database.masters import get_all_masters, remove_master
 from flows.admin_add_master_flow import start_add_master_flow
 
 router = Router()

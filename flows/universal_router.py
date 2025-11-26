@@ -1,12 +1,14 @@
 from aiogram import F, types, Router
 import aiosqlite
 from utils.userflow import userflow
-from database import DB_PATH, create_appointment_db, get_all_masters, remove_master
+from database import DB_PATH
+from database.appointments import create_appointment_db
+from database.masters import get_all_masters, remove_master
 from handlers.users.booking import is_slot_available, is_valid_phone, parse_manual_input
 from keyboards.admin_keyboard import admin_menu_kb
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from datetime import datetime, timedelta
-from database import set_master_slots
+from database.schedule import set_master_slots
 from utils.config_loader import OWNER_ID
 
 router = Router()

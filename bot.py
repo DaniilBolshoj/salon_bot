@@ -13,9 +13,9 @@ from handlers.users.booking import router as booking_router
 from handlers.users.contacts import router as contacts_router
 
 from handlers.admin.admin_menu import router as admin_menu_router
-from handlers.admin.masters import router as admin_masters_router
+#from handlers.admin.masters import router as admin_masters_router
 from handlers.admin.schedule import router as admin_schedule_router
-from handlers.admin.services import router as admin_services_router
+#from handlers.admin.services import router as admin_services_router
 
 from flows.universal_router import router as universal_router
 
@@ -27,7 +27,6 @@ bot = Bot(
 )
 
 dp = Dispatcher()
-
 
 async def on_startup():
     print("🔄 Инициализация базы данных...")

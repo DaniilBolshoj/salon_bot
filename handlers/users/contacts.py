@@ -1,4 +1,6 @@
 from aiogram import Router, types
+from database import DB_PATH
+import aiosqlite
 
 router = Router()
 
@@ -8,14 +10,19 @@ async def about(m: types.Message):
 
 @router.message(lambda m: m.text == "💇 Услуги")
 async def services_list(m: types.Message):
-    text = (
-        "💇 Наши услуги:\n"
-        "• Стрижка — 20€\n"
-        "• Окрашивание — 35€\n"
-        "• Маникюр — 15€\n"
-        "• Массаж — 40€"
-    )
-    await m.answer(text)
+    async with aiosqlite.connect(DB_PATH) as db:
+        cur = await db.execute("SELECT name, description, price FROM services")
+        rows = await cur.fetchall()
+
+    if not rows:
+        await m.answer("Пока нет доступных услуг.")
+        return
+
+    text = "💇 Наши услуги:\n\n"
+    for name, description, price in rows:
+        text += f"🔹 <b>{name}</b>\n{description}\n💰 Цена: {price}€\n\n"
+
+    await m.answer(text, parse_mode="HTML")
 
 @router.message(lambda m: m.text == "💬 Контакты")
 async def contacts(m: types.Message):

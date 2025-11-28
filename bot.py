@@ -5,12 +5,14 @@ from aiogram.enums import ParseMode
 
 from utils.config_loader import BOT_TOKEN
 from database import init_db
+from database.db import service_db
 
 # Новые маршрутизаторы
 from handlers.users.start import router as start_router
 from handlers.users.menu import router as menu_router
 from handlers.users.booking import router as booking_router
 from handlers.users.contacts import router as contacts_router
+from handlers.users.feedback import router as feedback_router
 
 from handlers.admin.admin_menu import router as admin_menu_router
 from handlers.admin.masters import router as admin_masters_router
@@ -31,6 +33,7 @@ dp = Dispatcher()
 async def on_startup():
     print("🔄 Инициализация базы данных...")
     await init_db()
+    await service_db()
     print("✅ База данных готова.")
 
     print("🔗 Подключение роутеров...")
@@ -40,6 +43,7 @@ async def on_startup():
     dp.include_router(menu_router)
     dp.include_router(booking_router)
     dp.include_router(contacts_router)
+    dp.include_router(feedback_router)
 
     # ADMIN роутеры
     dp.include_router(admin_menu_router)

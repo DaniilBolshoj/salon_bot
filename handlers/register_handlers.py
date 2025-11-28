@@ -3,10 +3,13 @@ from aiogram import F, Router
 from aiogram import Dispatcher
 from handlers.users import feedback
 
-from handlers.users.start import cmd_start, admin_menu_kb, remove_master_cmd, universal_input_handler
+from handlers.users.start import cmd_start, admin_menu_kb 
+from handlers.admin.admin_menu import remove_master_cmd
+from flows.universal_router import universal_input_handler
 from handlers.users.booking import begin_booking, cb_service, cb_master, cb_day, cb_time
 from handlers.users.feedback import show_reviews
 from handlers.users import booking, start
+from handlers.admin import services as admin_services
 
 router = Router()
 
@@ -24,6 +27,7 @@ def register_all_handlers(dp: Dispatcher):
     dp.callback_query.register(cb_day, F.data.startswith("day:"))
     dp.callback_query.register(cb_time, F.data.startswith("slot:"))
     dp.message.register(show_reviews, F.text == "⭐ Отзывы")
+    dp.include_router(admin_services.router)
 
     # Подключаем все роутеры
     dp.include_router(start.router)

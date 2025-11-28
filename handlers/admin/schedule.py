@@ -4,6 +4,7 @@ from aiogram.fsm.context import FSMContext
 from database.masters import get_all_masters
 from database.schedule import set_master_days, set_master_slots
 from handlers.admin.services import AddService
+from handlers.users.contacts import services_list
 
 from keyboards.admin_keyboard import admin_menu_kb
 
@@ -19,7 +20,7 @@ async def admin_services_menu(msg: types.Message):
     )
     await msg.answer("Введите название услуги:")
     await AddService.waiting_for_name.set()
-
+    await services_list(msg)
 
 # ====== Настройка расписания мастеров ======
 @router.message(F.text == "🗓 Настроить дни/часы")

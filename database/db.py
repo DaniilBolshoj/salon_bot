@@ -90,6 +90,18 @@ async def init_db():
             await db.execute("INSERT OR REPLACE INTO settings(key, value) VALUES(?,?)", ("work_end", "18:00"))
         await db.commit()
 
+async def service_db():
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS services (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                description TEXT,
+                price INTEGER
+            )
+        """)
+        await db.commit()
+
 def now_iso():
     return datetime.utcnow().isoformat(timespec='seconds')
 

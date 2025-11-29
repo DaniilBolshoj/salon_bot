@@ -46,7 +46,7 @@ async def get_master_slots_auto(master_name):
             (master_name,)
         )
         rows = await cur.fetchall()
-        print("AUTO SLOTS:", rows)  # <- вот правильный print
+        #print("AUTO SLOTS:", rows)  # <- вот правильный print
         return rows 
     
 async def update_master_status(master_name, status):

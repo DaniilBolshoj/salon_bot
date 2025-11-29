@@ -1,26 +1,34 @@
 from aiogram import Router, F, types
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
+from setuptools import Command
 from database.masters import get_all_masters
 from database.schedule import set_master_days, set_master_slots
-from handlers.admin.services import AddService
-from handlers.users.contacts import services_list
+#from handlers.admin.services import AddService
+from handlers.users.contacts import services_menu
+from database.services import get_services
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from keyboards.admin_keyboard import admin_menu_kb
+
 
 router = Router()
 from database.schedule import SetMasterSchedule
 
-# ====== Настройка услуг ======
 @router.message(F.text == "💇 Настроить услуги")
-async def admin_services_menu(msg: types.Message):
-    await msg.answer(
-        "Настройка услуг.\n\n"
-        "Отправь название услуги, чтобы добавить новую."
+async def admin_services(msg: types.Message):
+    # Siunčiam mygtuką su callback į centralų menu
+    kb = InlineKeyboardBuilder()
+    kb.button(text="Открыть меню услуг", callback_data="service_menu")
+    kb.adjust(1)
+    await msg.answer("Настройка услуг:", reply_markup=kb.as_markup())
+
+@router.callback_query(lambda c: c.data == "🏠 В главное меню")
+async def back_to_admin_menu(callback: types.CallbackQuery):
+    await callback.message.edit_text(
+        "Вы в главном меню администратора.",
+        reply_markup=admin_menu_kb()
     )
-    await msg.answer("Введите название услуги:")
-    await AddService.waiting_for_name.set()
-    await services_list(msg)
 
 # ====== Настройка расписания мастеров ======
 @router.message(F.text == "🗓 Настроить дни/часы")
@@ -62,7 +70,11 @@ async def set_master_schedule(msg: types.Message, state: FSMContext):
     await msg.answer(text)
     await SetMasterSchedule.waiting_for_master.set()
 
-
+# ====== Настройка обеденного перерыва ======
+@router.message(F.text == "Настроить обеденный перерыв")
+async def set_lunch_break(msg: types.Message):
+    await msg.answer("Функция настройки обеденного перерыва пока не реализована.")
+    
 @router.message(SetMasterSchedule.waiting_for_master)
 async def schedule_master_selected(msg: types.Message, state: FSMContext):
     master_name = msg.text.strip()

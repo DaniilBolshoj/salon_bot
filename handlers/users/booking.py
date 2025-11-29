@@ -182,7 +182,10 @@ async def cb_day(callback: CallbackQuery):
 # ===================== ВЫБОР ВРЕМЕНИ =====================
 @router.callback_query(F.data.startswith("slot_"))
 async def cb_time(callback: CallbackQuery):
-    # формат: slot_{day}_{time}_{master}
+    """
+    Callback po pasirinkto laiko. Paruošia rezervacijos kortelę ir prašo telefono numerio.
+    Формат callback: slot_{day}_{time}_{master}
+    """
     try:
         _, day, time, master = callback.data.split("_", 3)
     except ValueError:
@@ -195,20 +198,25 @@ async def cb_time(callback: CallbackQuery):
         await callback.answer("Сначала выберите услугу/мастера.", show_alert=True)
         return
 
+    # Atnaujinti userflow su pasirinktu laiku
     flow["time"] = time
     flow["day"] = day
     flow["master"] = master
-    flow["step"] = "time_chosen"
+    flow["step"] = "await_phone"  # dabar handleris žinos, kad laukiame telefono
     userflow[user_id] = flow
 
-    await callback.message.answer(
-        f"📋 Подтвердите запись:\n"
-        f"Услуга: {flow['service']}\n"
-        f"Мастер: {flow['master']}\n"
-        f"День: {flow['day']}\n"
-        f"Время: {flow['time']}\n\n"
-        f"Отправьте свой номер телефона для завершения записи."
+    # Sukurti gražią rezervacijos kortelę
+    text = (
+        f"📋 <b>Подтверждение записи</b>\n\n"
+        f"💇 Услуга: <b>{flow['service']}</b>\n"
+        f"🧑‍🎨 Мастер: <b>{flow['master']}</b>\n"
+        f"📅 День: <b>{flow['day']}</b>\n"
+        f"⏰ Время: <b>{flow['time']}</b>\n\n"
+        f"Отправьте свой номер телефона, чтобы завершить запись.\n"
+        f"Пример: +37060000000"
     )
+
+    await callback.message.edit_text(text, parse_mode="HTML")
     await callback.answer()
 
 # ===================== ПОЛУЧЕНИЕ ТЕЛЕФОНА =====================

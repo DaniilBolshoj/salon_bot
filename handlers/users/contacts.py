@@ -9,20 +9,20 @@ async def about(m: types.Message):
     await m.answer("💖 Салон красоты — запись через бота. Для вопросов используйте Контакты.")
 
 @router.message(lambda m: m.text == "💇 Услуги")
-async def services_list(m: types.Message):
+async def services_menu(m: types.Message):
     async with aiosqlite.connect(DB_PATH) as db:
-        cur = await db.execute("SELECT name, description, price FROM services")
+        cur = await db.execute("SELECT name, price FROM services")
         rows = await cur.fetchall()
-
+    
     if not rows:
         await m.answer("Пока нет доступных услуг.")
         return
+    
+    text = "💇 Наши услуги:\n"
+    for name, price in rows:
+        text += f"• {name} — {price}€\n"
+    await m.answer(text)
 
-    text = "💇 Наши услуги:\n\n"
-    for name, description, price in rows:
-        text += f"🔹 <b>{name}</b>\n{description}\n💰 Цена: {price}€\n\n"
-
-    await m.answer(text, parse_mode="HTML")
 
 @router.message(lambda m: m.text == "💬 Контакты")
 async def contacts(m: types.Message):

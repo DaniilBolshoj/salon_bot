@@ -1,6 +1,8 @@
-from aiogram import Router, types, F
+from aiogram import Router, types
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.state import StatesGroup, State
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+import aiosqlite
 
 from database.services import (
     add_service,
@@ -13,135 +15,171 @@ from database.services import (
 router = Router()
 
 
-# FSM состояния
+# ===== FSM States =====
 class AddService(StatesGroup):
     waiting_for_name = State()
     waiting_for_price = State()
 
 
-class EditServicePrice(StatesGroup):
-    waiting_for_service = State()
-    waiting_for_new_price = State()
+class EditService(StatesGroup):
+    waiting_for_field = State()  # choice: name or price
+    waiting_for_new_value = State()
 
 
-class RemoveServiceFSM(StatesGroup):
-    waiting_for_service = State()
+class RemoveService(StatesGroup):
+    waiting_for_confirm = State()
 
 
-# ====== Добавление услуги ======
+@router.callback_query(lambda c: c.data == "service_menu")
+async def service_menu(callback: types.CallbackQuery):
+    services = await get_services()
+    kb = InlineKeyboardBuilder()
+
+    if not services:
+        kb.button(text="➕ Добавить услугу", callback_data="service_add")
+        await callback.message.edit_text(
+            "Список услуг пуст.",
+            reply_markup=kb.as_markup()
+        )
+        return
+
+    for s_id, name, price in services:
+        kb.button(
+            text=f"{name} — {price}€",
+            callback_data=f"service_item:{s_id}"
+        )
+
+    kb.button(text="➕ Добавить услугу", callback_data="service_add")
+    kb.adjust(1)
+
+    await callback.message.edit_text(
+        "Список услуг:",
+        reply_markup=kb.as_markup()
+    )
+
+
+# ====== Add new service ======
+@router.callback_query(lambda c: c.data == "service_add")
+async def add_service_start(callback: types.CallbackQuery, state: FSMContext):
+    await state.set_state(AddService.waiting_for_name)
+    await callback.message.edit_text("Введите название новой услуги:")
+
+
 @router.message(AddService.waiting_for_name)
-async def service_name_received(msg: types.Message, state: FSMContext):
+async def add_service_name(msg: types.Message, state: FSMContext):
     await state.update_data(name=msg.text.strip())
+    await state.set_state(AddService.waiting_for_price)
     await msg.answer("Введите цену услуги:")
-    await AddService.waiting_for_price.set()
 
 
 @router.message(AddService.waiting_for_price)
-async def service_price_received(msg: types.Message, state: FSMContext):
-    price_text = msg.text.replace(",", ".").strip()
-
+async def add_service_price(msg: types.Message, state: FSMContext):
+    data = await state.get_data()
+    name = data.get("name")
     try:
-        price = float(price_text)
+        price = float(msg.text.replace(",", ".").strip())
     except ValueError:
         await msg.answer("Введите корректную цену!")
         return
-
-    data = await state.get_data()
-    name = data.get("name")
 
     await add_service(name, price)
     await state.clear()
     await msg.answer(f"✅ Услуга добавлена:\n{name} — {price}€")
 
 
-# ====== Просмотр списка услуг ======
-@router.message(F.text == "Список услуг")
-async def list_services_menu(msg: types.Message):
-    services = await get_services()
-    if not services:
-        await msg.answer("Список услуг пуст.")
-        return
-    
-    text = "📋 Услуги:\n\n"
-    for sid, name, price in services:
-        text += f"• {name} — {price}€\n"
-
-    await msg.answer(text)
-
-
-# ====== Редактирование цены ======
-@router.message(F.text == "Редактировать цену услуги")
-async def edit_service_start(msg: types.Message, state: FSMContext):
-    services = await get_services()
-    if not services:
-        await msg.answer("Нет услуг для редактирования.")
-        return
-
-    text = "Напишите название услуги:\n"
-    text += "\n".join([name for _, name, _ in services])
-    await msg.answer(text)
-
-    await EditServicePrice.waiting_for_service.set()
-
-
-@router.message(EditServicePrice.waiting_for_service)
-async def edit_service_get_name(msg: types.Message, state: FSMContext):
-    service = await get_service_by_name(msg.text.strip())
+# ====== Select service to edit/remove ======
+@router.callback_query(lambda c: c.data.startswith("service_item:"))
+async def service_item(callback: types.CallbackQuery, state: FSMContext):
+    service_id = int(callback.data.split(":")[1])
+    service = await get_service_by_name(await get_service_name_by_id(service_id))
     if not service:
-        await msg.answer("Такой услуги нет. Попробуйте ещё раз.")
+        await callback.message.answer("Услуга не найдена.")
         return
 
-    service_id, name, price = service
+    _, name, price = service
     await state.update_data(service_id=service_id)
-    await msg.answer(f"Текущая цена: {price}€. Введите новую цену:")
 
-    await EditServicePrice.waiting_for_new_price.set()
+    kb = InlineKeyboardBuilder()
+    kb.button(text="Редактировать название", callback_data="edit_name")
+    kb.button(text="Редактировать цену", callback_data="edit_price")
+    kb.button(text="Удалить услугу", callback_data="remove_service")
+    kb.button(text="⬅ Назад", callback_data="service_menu")
+    kb.adjust(1)
+
+    await callback.message.edit_text(
+        f"Вы выбрали услугу:\n{name} — {price}€",
+        reply_markup=kb.as_markup()
+    )
 
 
-@router.message(EditServicePrice.waiting_for_new_price)
-async def edit_service_set_price(msg: types.Message, state: FSMContext):
-    price_text = msg.text.replace(",", ".").strip()
+# ====== Edit name ======
+@router.callback_query(lambda c: c.data == "edit_name")
+async def edit_service_name(callback: types.CallbackQuery, state: FSMContext):
+    await state.set_state(EditService.waiting_for_new_value)
+    await state.update_data(field="name")
+    await callback.message.edit_text("Введите новое название услуги:")
 
-    try:
-        price = float(price_text)
-    except ValueError:
-        await msg.answer("Введите нормальную цену.")
-        return
 
+# ====== Edit price ======
+@router.callback_query(lambda c: c.data == "edit_price")
+async def edit_service_price_cb(callback: types.CallbackQuery, state: FSMContext):
+    await state.set_state(EditService.waiting_for_new_value)
+    await state.update_data(field="price")
+    await callback.message.edit_text("Введите новую цену услуги:")
+
+
+# ====== Handle new value ======
+@router.message(EditService.waiting_for_new_value)
+async def edit_service_new_value(msg: types.Message, state: FSMContext):
     data = await state.get_data()
     service_id = data.get("service_id")
+    field = data.get("field")
 
-    await update_service_price(service_id, price)
+    if field == "name":
+        new_name = msg.text.strip()
+        async with aiosqlite.connect("database.db") as db:
+            await db.execute("UPDATE services SET name=? WHERE id=?", (new_name, service_id))
+            await db.commit()
+        await msg.answer(f"✅ Название обновлено на: {new_name}")
+    elif field == "price":
+        try:
+            new_price = float(msg.text.replace(",", ".").strip())
+        except ValueError:
+            await msg.answer("Введите корректную цену!")
+            return
+        await update_service_price(service_id, new_price)
+        await msg.answer(f"✅ Цена обновлена на: {new_price}€")
+
     await state.clear()
 
-    await msg.answer("✅ Цена обновлена!")
+
+# ====== Remove service ======
+@router.callback_query(lambda c: c.data == "remove_service")
+async def remove_service_start(callback: types.CallbackQuery, state: FSMContext):
+    kb = InlineKeyboardBuilder()
+    kb.button(text="Да, удалить", callback_data="confirm_remove")
+    kb.button(text="Отмена", callback_data="service_menu")
+    kb.adjust(1)
+    await state.set_state(RemoveService.waiting_for_confirm)
+    await callback.message.edit_text("Вы уверены, что хотите удалить эту услугу?", reply_markup=kb.as_markup())
 
 
-# ====== Удаление услуги ======
-@router.message(F.text == "Удалить услугу")
-async def remove_service_start(msg: types.Message, state: FSMContext):
+@router.callback_query(lambda c: c.data == "confirm_remove")
+async def remove_service_confirm(callback: types.CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    service_id = data.get("service_id")
+    service = await get_service_by_name(await get_service_name_by_id(service_id))
+    if service:
+        _, name, _ = service
+        await remove_service_by_id(service_id)
+        await callback.message.edit_text(f"❌ Услуга '{name}' удалена.")
+    await state.clear()
+
+
+# ====== Helper ======
+async def get_service_name_by_id(service_id):
     services = await get_services()
-    if not services:
-        await msg.answer("Нет услуг для удаления.")
-        return
-
-    text = "Введите название услуги:\n"
-    text += "\n".join([name for _, name, _ in services])
-
-    await msg.answer(text)
-    await RemoveServiceFSM.waiting_for_service.set()
-
-
-@router.message(RemoveServiceFSM.waiting_for_service)
-async def remove_service_confirm(msg: types.Message, state: FSMContext):
-    service = await get_service_by_name(msg.text.strip())
-    if not service:
-        await msg.answer("Такой услуги нет.")
-        return
-
-    service_id, name, price = service
-
-    await remove_service_by_id(service_id)
-    await state.clear()
-
-    await msg.answer(f"❌ Услуга '{name}' удалена.")
+    for s_id, name, _ in services:
+        if s_id == service_id:
+            return name
+    return None

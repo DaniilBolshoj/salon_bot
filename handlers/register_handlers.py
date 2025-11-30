@@ -1,13 +1,13 @@
 from aiogram.filters import Command
 from aiogram import F, Router
 from aiogram import Dispatcher
-from handlers.users import feedback
+from handlers.users import reviews
 
 from handlers.users.start import cmd_start, admin_menu_kb 
 from handlers.admin.admin_menu import remove_master_cmd
 from flows.universal_router import universal_input_handler
 from handlers.users.booking import begin_booking, cb_service, cb_master, cb_day, cb_time
-from handlers.users.feedback import show_reviews
+from handlers.users.reviews import show_reviews
 from handlers.users import booking, start
 from handlers.admin import services as admin_services
 
@@ -32,4 +32,4 @@ def register_all_handlers(dp: Dispatcher):
     # Подключаем все роутеры
     dp.include_router(start.router)
     dp.include_router(booking.router)
-    dp.include_router(feedback.router)
+    dp.include_router(reviews.router)

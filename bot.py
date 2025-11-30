@@ -12,7 +12,7 @@ from handlers.users.start import router as start_router
 from handlers.users.menu import router as menu_router
 from handlers.users.booking import router as booking_router
 from handlers.users.contacts import router as contacts_router
-from handlers.users.feedback import router as feedback_router
+from handlers.users.reviews import router as feedback_router
 
 from handlers.admin.admin_menu import router as admin_menu_router
 from handlers.admin.masters import router as admin_masters_router

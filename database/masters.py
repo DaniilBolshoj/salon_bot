@@ -22,11 +22,11 @@ async def get_all_masters():
         rows = await cur.fetchall()
         return [r[0] for r in rows]  
           
-async def get_masters_by_service(service_name):
+async def get_masters_by_service(service_id):
     async with aiosqlite.connect(DB_PATH) as db:
         cur = await db.execute(
             "SELECT name FROM masters WHERE services LIKE ?",
-            (f"%{service_name}%",)
+            (f"%{service_id}%",)
         )
         rows = await cur.fetchall()
         return [r[0] for r in rows]

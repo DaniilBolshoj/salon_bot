@@ -3,15 +3,18 @@ import aiosqlite
 from utils.userflow import userflow
 from database import DB_PATH
 from database.appointments import create_appointment_db
-from database.masters import get_all_masters, remove_master
+from database.masters import add_master, get_all_masters, remove_master
 from handlers.users.booking import is_slot_available, is_valid_phone, parse_manual_input
 from keyboards.admin_keyboard import admin_menu_kb
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from datetime import datetime, timedelta
 from database.schedule import set_master_slots
 from utils.config_loader import OWNER_ID
+from database.services import get_services
+
 
 router = Router()
+
 
 # ===================== УНИВЕРСАЛЬНЫЙ ХЕНДЛЕР ВВОДА =====================
 @router.message(F.text & ~F.text.startswith("/"))
@@ -31,9 +34,8 @@ async def universal_input_handler(msg: types.Message):
             return
 
         # Добавляем мастера в БД
-        async with aiosqlite.connect(DB_PATH) as db:
-            await db.execute("INSERT OR IGNORE INTO masters (name) VALUES (?)", (text,))
-            await db.commit()
+        await add_master(text, [])
+        await msg.answer(f"✅ Мастер {text} добавлен!", reply_markup=admin_menu_kb())
 
         # ВАЖНО! создаём временный flow
         userflow[user_id] = {
@@ -42,11 +44,13 @@ async def universal_input_handler(msg: types.Message):
             "next": "choose_services"
         }
 
+        services = await get_services()
+
         # Показываем кнопки выбора услуг
         kb = InlineKeyboardBuilder()
-        services = ["Стрижка", "Окрашивание", "Маникюр", "Массаж"]
-        for s in services:
-            kb.button(text=s, callback_data=f"adm_set_service:{text}:{s}")
+        for s_id, s_name, _ in services:
+            kb.button(text=s_name, callback_data=f"adm_set_service:{text}:{s_id}")
+
         kb.button(text="✅ Готово", callback_data=f"adm_finish_services:{text}")
         kb.adjust(2)
 

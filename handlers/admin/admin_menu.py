@@ -5,6 +5,7 @@ from database.appointments import list_appointments_db
 from database.masters import get_all_masters, remove_master
 from flows.admin_add_master_flow import start_add_master_flow
 from collections import defaultdict
+from aiogram.types import KeyboardButton
 
 router = Router()
 
@@ -46,7 +47,7 @@ async def remove_master_cmd(msg: types.Message):
         await msg.answer("❌ Нет мастеров для удаления.")
         return
     kb = types.ReplyKeyboardMarkup(
-        keyboard=[[types.KeyboardButton(text=m)] for m in masters] + [[types.KeyboardButton(text="⬅️ Назад")]],
+        keyboard = [[KeyboardButton(text=m[1])] for m in masters] + [[KeyboardButton(text="⬅️ Назад")]],
         resize_keyboard=True
     )
     from flows.universal_router import userflow

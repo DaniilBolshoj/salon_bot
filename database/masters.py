@@ -1,62 +1,78 @@
 import aiosqlite
-from database import DB_PATH  # твой путь к БД
-from datetime import datetime, timedelta
-from database import WEEKDAYS
+from database import DB_PATH
 
-# ======= Masters =======
+WEEKDAYS = {"Пн":0,"Вт":1,"Ср":2,"Чт":3,"Пт":4,"Сб":5,"Вс":6}
 
-async def add_master(name: str, service_ids: list[int]):
-    """
-    Добавляет мастера и список услуг, которые он оказывает.
-    service_ids — список ID услуг, например [1, 3, 5]
-    """
+# Добавить мастера: services — список строк (имён услуг)
+async def add_master(name, services_list):
     async with aiosqlite.connect(DB_PATH) as db:
+        # Проверяем, есть ли уже мастер с таким именем
+        cur = await db.execute("SELECT id FROM masters WHERE name=?", (name,))
+        existing = await cur.fetchone()
+        if existing:
+            return existing[0]  # возвращаем id существующего мастера
+
+        # Если нет — создаём нового
         await db.execute(
-            "INSERT OR REPLACE INTO masters(name, services) VALUES(?, ?)",
-            (name, ",".join(map(str, service_ids)))
+            "INSERT INTO masters(name) VALUES(?)",
+            (name,)
         )
         await db.commit()
 
+        # Получаем id вновь добавленного мастера
+        cur = await db.execute("SELECT id FROM masters WHERE name=?", (name,))
+        r = await cur.fetchone()
+        return r[0]
 
-async def get_masters_by_service(service_name):
+# Получить всех мастеров: возвращает [(id, name), ...]
+async def get_all_masters():
     async with aiosqlite.connect(DB_PATH) as db:
+        cur = await db.execute("SELECT id, name FROM masters ORDER BY name")
+        rows = await cur.fetchall()
+        return [(r[0], r[1]) for r in rows]
+
+# Получить мастеров, которые выполняют услугу по service_id
+# ИД услуги -> сначала получаем её имя, затем ищем по маске в поле services
+async def get_masters_by_service(service_id: int):
+    async with aiosqlite.connect(DB_PATH) as db:
+        # получаем имя услуги по id
+        cur = await db.execute("SELECT name FROM services WHERE id = ?", (service_id,))
+        row = await cur.fetchone()
+        if not row:
+            return []  # услуга не найдена
+        service_name = row[0]
+        # ищем мастеров, у которых services LIKE %service_name%
         cur = await db.execute(
-            "SELECT name FROM masters WHERE services LIKE ?",
+            "SELECT id, name FROM masters WHERE services LIKE ? ORDER BY name",
             (f"%{service_name}%",)
         )
         rows = await cur.fetchall()
-        return [r[0] for r in rows]
+        return [(r[0], r[1]) for r in rows]
 
-
-async def get_all_masters():
+# Получить мастера по id
+async def get_master_by_id(master_id: int):
     async with aiosqlite.connect(DB_PATH) as db:
-        cursor = await db.execute("SELECT name FROM masters ORDER BY name")
-        rows = await cursor.fetchall()
-        return [r[0] for r in rows]
+        cur = await db.execute("SELECT id, name, services FROM masters WHERE id = ?", (master_id,))
+        row = await cur.fetchone()
+        return row if row else None
 
-async def remove_master(name: str):
+# Удалить мастера по id
+async def remove_master_by_name(master_name: str):
     async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("DELETE FROM masters WHERE name=?", (name,))
+        # Сначала получаем id мастера
+        cur = await db.execute("SELECT id FROM masters WHERE name = ?", (master_name,))
+        row = await cur.fetchone()
+        if not row:
+            return False  # мастер не найден
+        master_id = row[0]
+        # Удаляем мастера
+        await db.execute("DELETE FROM masters WHERE id = ?", (master_id,))
         await db.commit()
+        return True
 
-# ======= Упрощённая версия (автоматическая) =======
-async def get_master_slots_auto(master_name):
+# Обновить services для мастера (services — список имён)
+async def update_master_services(master_id: int, services: list[str]):
+    services_str = ",".join(services)
     async with aiosqlite.connect(DB_PATH) as db:
-        cur = await db.execute(
-            """SELECT day, time FROM master_slots
-               JOIN masters ON masters.id = master_slots.master_id
-               WHERE masters.name=? ORDER BY day, time""",
-            (master_name,)
-        )
-        rows = await cur.fetchall()
-        #print("AUTO SLOTS:", rows)  # <- вот правильный print
-        return rows 
-    
-async def update_master_status(master_name, status):
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "UPDATE masters SET status=? WHERE name=?",
-            (status, master_name)
-        )
+        await db.execute("UPDATE masters SET services = ? WHERE id = ?", (services_str, master_id))
         await db.commit()
-

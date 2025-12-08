@@ -40,12 +40,9 @@ async def services_list():
         return await cur.fetchall()
 
 # ======= Найти услугу по названию =======
-async def get_service_by_name(name):
+async def get_service_by_id(service_id: int):
     async with aiosqlite.connect(DB_PATH) as db:
-        cur = await db.execute(
-            "SELECT id, name, price FROM services WHERE name = ?",
-            (name,)
-        )
+        cur = await db.execute("SELECT id, name, price FROM services WHERE id = ?", (service_id,))
         return await cur.fetchone()
 
 # ======= Удалить услугу по id =======

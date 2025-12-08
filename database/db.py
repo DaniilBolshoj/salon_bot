@@ -1,8 +1,6 @@
 import aiosqlite
 from datetime import datetime, date, timedelta
 
-WEEKDAYS = {"Пн":0,"Вт":1,"Ср":2,"Чт":3,"Пт":4,"Сб":5,"Вс":6}
-
 DB_PATH = "database/salon.db" 
 
 # ======= SQL схемы =======
@@ -13,16 +11,16 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 
 CREATE TABLE IF NOT EXISTS services (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT UNIQUE NOT NULL,
-    price TEXT
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT UNIQUE NOT NULL,
+  price TEXT
 );
 
 CREATE TABLE IF NOT EXISTS masters (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT UNIQUE,
-    services TEXT,
-    status TEXT DEFAULT 'работает'
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  services TEXT, -- e.g. "Стрижка,Маникюр"
+  status TEXT
 );
 
 CREATE TABLE IF NOT EXISTS master_days (
@@ -64,13 +62,13 @@ CREATE TABLE IF NOT EXISTS requests (
 );
 
 CREATE TABLE IF NOT EXISTS reviews (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,
-    service TEXT,
-    master TEXT,
-    rating INTEGER,
-    text TEXT,
-    created_at TEXT
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER,
+  service TEXT,
+  master TEXT,
+  rating REAL,
+  review_text TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 """
 

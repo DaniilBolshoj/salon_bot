@@ -7,7 +7,7 @@ import aiosqlite
 from database.services import (
     add_service,
     get_services,
-    get_service_by_name,
+    get_service_by_id,
     remove_service_by_id,
     update_service_price
 )
@@ -91,7 +91,7 @@ async def add_service_price(msg: types.Message, state: FSMContext):
 @router.callback_query(lambda c: c.data.startswith("service_item:"))
 async def service_item(callback: types.CallbackQuery, state: FSMContext):
     service_id = int(callback.data.split(":")[1])
-    service = await get_service_by_name(await get_service_name_by_id(service_id))
+    service = await get_service_by_id(service_id)
     if not service:
         await callback.message.answer("Услуга не найдена.")
         return
@@ -168,7 +168,7 @@ async def remove_service_start(callback: types.CallbackQuery, state: FSMContext)
 async def remove_service_confirm(callback: types.CallbackQuery, state: FSMContext):
     data = await state.get_data()
     service_id = data.get("service_id")
-    service = await get_service_by_name(await get_service_name_by_id(service_id))
+    service = await get_service_by_id(service_id)
     if service:
         _, name, _ = service
         await remove_service_by_id(service_id)

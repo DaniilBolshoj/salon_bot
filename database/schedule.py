@@ -1,6 +1,7 @@
 import aiosqlite
 from datetime import datetime, timedelta, time as dt_time
-from database import DB_PATH, WEEKDAYS
+from database import DB_PATH
+from database.masters import WEEKDAYS
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 
@@ -156,6 +157,49 @@ async def slot_taken(master_name, day_str, time_str):
         )
         r = await cur.fetchone()
         return r[0] > 0
+    
+# ===== Auto slots for booking =====
+async def get_master_slots_auto(master_name, days_ahead: int = 14):
+    """
+    Готовит слоты мастера в формате [(day, time), ...] для выбора пользователем.
+    Берёт все слоты из таблицы master_slots, проверяет занятость.
+    """
+    async with aiosqlite.connect(DB_PATH) as db:
+        # Получаем master_id
+        cur = await db.execute("SELECT id FROM masters WHERE name=?", (master_name,))
+        r = await cur.fetchone()
+        if not r:
+            return []
+        master_id = r[0]
+
+        today = datetime.today().date()
+        end_day = today + timedelta(days=days_ahead)
+
+        # Получаем все слоты мастера
+        cur = await db.execute(
+            "SELECT day, time FROM master_slots WHERE master_id=? ORDER BY day, time",
+            (master_id,)
+        )
+        all_slots = await cur.fetchall()
+
+        # Получаем занятые слоты
+        cur = await db.execute(
+            "SELECT day, time FROM appointments WHERE master=?",
+            (master_name,)
+        )
+        busy_slots = set(await cur.fetchall())
+
+        # Фильтруем только доступные слоты
+        available_slots = []
+        for day_str, time_str in all_slots:
+            slot_date = datetime.strptime(day_str, "%Y-%m-%d").date()
+            if slot_date < today or slot_date > end_day:
+                continue
+            if (day_str, time_str) in busy_slots:
+                continue
+            available_slots.append((day_str, time_str))
+
+        return available_slots
 
 # ===== Vacation =====
 async def set_master_vacation(master_name):

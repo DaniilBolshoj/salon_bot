@@ -3,7 +3,7 @@ import aiosqlite
 from utils.userflow import userflow
 from database import DB_PATH
 from database.appointments import create_appointment_db
-from database.masters import add_master, get_all_masters, remove_master
+from database.masters import add_master, get_all_masters, remove_master_by_name
 from handlers.users.booking import is_slot_available, is_valid_phone, parse_manual_input
 from keyboards.admin_keyboard import admin_menu_kb
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -11,7 +11,6 @@ from datetime import datetime, timedelta
 from database.schedule import set_master_slots
 from utils.config_loader import OWNER_ID
 from database.services import get_services
-
 
 router = Router()
 
@@ -26,18 +25,16 @@ async def universal_input_handler(msg: types.Message):
 
     text = msg.text.strip()
 
-    # === После добавления мастера в universal_input_handler ===
+    # === После добавления мастера ===
     if flow.get("next") == "add_master":
         if text == "⬅️ Назад":
             userflow.pop(user_id, None)
             await msg.answer("Отмена добавления мастера.", reply_markup=admin_menu_kb())
             return
 
-        # Добавляем мастера в БД
         await add_master(text, [])
         await msg.answer(f"✅ Мастер {text} добавлен!", reply_markup=admin_menu_kb())
 
-        # ВАЖНО! создаём временный flow
         userflow[user_id] = {
             "master_name": text,
             "selected_services": [],
@@ -45,12 +42,9 @@ async def universal_input_handler(msg: types.Message):
         }
 
         services = await get_services()
-
-        # Показываем кнопки выбора услуг
         kb = InlineKeyboardBuilder()
         for s_id, s_name, _ in services:
             kb.button(text=s_name, callback_data=f"adm_set_service:{text}:{s_id}")
-
         kb.button(text="✅ Готово", callback_data=f"adm_finish_services:{text}")
         kb.adjust(2)
 
@@ -60,19 +54,23 @@ async def universal_input_handler(msg: types.Message):
         )
         return
 
+    # === Удаление мастера ===
     if flow.get("next") == "delete_master":
         if text == "⬅️ Назад":
             userflow.pop(user_id, None)
             await msg.answer("Возврат в меню.", reply_markup=admin_menu_kb())
             return
-        masters = await get_all_masters()
-        if text in masters:
-            await remove_master(text)
+
+        # Пытаемся удалить мастера по имени
+        from database.masters import remove_master_by_name
+        success = await remove_master_by_name(text)
+        if success:
             userflow.pop(user_id, None)
             await msg.answer(f"🗑 Мастер {text} удалён.", reply_markup=admin_menu_kb())
         else:
             await msg.answer("❌ Выберите мастера из списка.")
         return
+
 
     # --- Ввод часов работы мастера ---
     if flow.get("next") in ["ask_start_time", "ask_end_time", "ask_slot_duration"]:
@@ -106,7 +104,7 @@ async def universal_input_handler(msg: types.Message):
                     return
                 flow["slot_duration"] = duration
 
-                # Генерируем слоты в flow (для показа админу)
+                # Генерируем слоты
                 start_dt = datetime.combine(datetime.today(), flow["start_time"])
                 end_dt = datetime.combine(datetime.today(), flow["end_time"])
                 slots = []
@@ -117,16 +115,14 @@ async def universal_input_handler(msg: types.Message):
 
                 flow["selected_slots"] = slots
 
-                # ================== ВАЖНО ==================
-                # Записываем слоты в БД для выбранных дней
+                # Записываем слоты в БД
                 await set_master_slots(
                     master_name=flow["master_name"],
                     start_time=flow["start_time"].strftime("%H:%M"),
                     end_time=flow["end_time"].strftime("%H:%M"),
-                    selected_days=flow["selected_days"],
+                    selected_days=flow.get("selected_days", []),
                     slot_duration_hours=duration
                 )
-                # ==========================================
 
                 await msg.answer(
                     f"✅ Настройка завершена для {flow['master_name']}!\n"
@@ -213,7 +209,6 @@ async def universal_input_handler(msg: types.Message):
                 f"<b>Время:</b> {time_}\n"
                 f"<b>Телефон:</b> {phone}"
             )
-
             try:
                 bot = msg.bot
                 await bot.send_message(

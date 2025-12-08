@@ -2,7 +2,7 @@ from aiogram import Router, F, types
 from keyboards.admin_keyboard import admin_menu_kb, settings_kb
 from utils.config_loader import OWNER_ID
 from database.appointments import list_appointments_db
-from database.masters import get_all_masters, remove_master
+from database.masters import get_all_masters, remove_master_by_name
 from flows.admin_add_master_flow import start_add_master_flow
 from collections import defaultdict
 from aiogram.types import KeyboardButton

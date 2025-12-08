@@ -1,24 +1,26 @@
 from aiogram import types, F, Bot, Router
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from database.masters import (
-    get_masters_by_service,
-    get_master_slots_auto,
-    WEEKDAYS
-)
-from database.schedule import get_master_days
-from database.appointments import create_appointment_db
-from database.appointments import user_has_appointment_db
-from database.services import get_services
-from utils.userflow import userflow
-from utils.config_loader import BOT_TOKEN
-import aiosqlite
-import re
-from datetime import datetime, timedelta
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.types import CallbackQuery
 
+# ====== Database ======
+from database.masters import get_masters_by_service, WEEKDAYS
+from database.schedule import get_master_slots_auto, get_master_days
+from database.appointments import create_appointment_db, user_has_appointment_db
+from database.services import get_services
+
+# ====== Utils ======
+from utils.userflow import userflow
+from utils.config_loader import BOT_TOKEN
+
+# ====== Standard libs ======
+import aiosqlite
+import re
+from datetime import datetime, timedelta
+
 router = Router()
 bot = Bot(token=BOT_TOKEN)
+
 
 def weekday_from_date(date_str: str):
     dt = datetime.strptime(date_str, "%Y-%m-%d")

@@ -57,16 +57,13 @@ async def get_master_by_id(master_id: int):
         return row if row else None
 
 # Удалить мастера по id
-async def remove_master_by_name(master_name: str):
+async def remove_master_by_name(name: str) -> bool:
     async with aiosqlite.connect(DB_PATH) as db:
-        # Сначала получаем id мастера
-        cur = await db.execute("SELECT id FROM masters WHERE name = ?", (master_name,))
-        row = await cur.fetchone()
+        cursor = await db.execute("SELECT id FROM masters WHERE name=?", (name,))
+        row = await cursor.fetchone()
         if not row:
-            return False  # мастер не найден
-        master_id = row[0]
-        # Удаляем мастера
-        await db.execute("DELETE FROM masters WHERE id = ?", (master_id,))
+            return False
+        await db.execute("DELETE FROM masters WHERE name=?", (name,))
         await db.commit()
         return True
 

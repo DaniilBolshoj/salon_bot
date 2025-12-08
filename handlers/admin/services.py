@@ -3,6 +3,11 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 import aiosqlite
+from aiogram import Router, types
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from database.masters import add_master
+from database.services import get_services
+from flows.universal_router import userflow
 
 from database.services import (
     add_service,
@@ -28,6 +33,12 @@ class EditService(StatesGroup):
 
 class RemoveService(StatesGroup):
     waiting_for_confirm = State()
+
+class AddMasterStates(StatesGroup):
+    waiting_for_name = State()
+    choose_services = State()
+    choose_workdays = State()
+    choose_slots = State()
 
 
 @router.callback_query(lambda c: c.data == "service_menu")
@@ -179,6 +190,7 @@ async def remove_service_confirm(callback: types.CallbackQuery, state: FSMContex
 # ====== Helper ======
 async def get_service_name_by_id(service_id):
     services = await get_services()
+    print(services)
     for s_id, name, _ in services:
         if s_id == service_id:
             return name

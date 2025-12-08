@@ -18,6 +18,6 @@ def settings_kb():
     buttons = [
         [KeyboardButton(text="🌴 Отправить мастера в отпуск"), KeyboardButton(text="🗓 Настроить дни/часы")],
         [KeyboardButton(text="💇 Настроить услуги"), KeyboardButton(text="Настроить обеденный перерыв")],
-        [KeyboardButton(text="⬅️ Назад в меню")],
+        [KeyboardButton(text="Мастера"), KeyboardButton(text="⬅️ Назад в меню")],
     ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)

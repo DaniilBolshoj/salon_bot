@@ -29,8 +29,8 @@ async def cb_start_leave_review(c: CallbackQuery, state: FSMContext):
         await c.message.answer("Пока нет доступных услуг.")
         return
     kb = InlineKeyboardBuilder()
-    for sid, name, price in services:
-        kb.button(text=f"{name} — {price}€", callback_data=f"rev_service_{sid}")
+    for sid, name in services:
+        kb.button(text=f"{name}", callback_data=f"rev_service_{sid}")
     kb.adjust(1)
     await c.message.answer("🔧 Выберите услугу:", reply_markup=kb.as_markup())
     await state.set_state(ReviewStates.choosing_service)

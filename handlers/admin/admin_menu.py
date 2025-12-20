@@ -1,5 +1,6 @@
 from aiogram import Router, F, types
 from keyboards.admin_keyboard import admin_menu_kb, settings_kb
+from utils import userflow
 from utils.config_loader import OWNER_ID
 from database.appointments import list_appointments_db
 from database.masters import get_all_masters, remove_master_by_name
@@ -38,7 +39,14 @@ async def admin_settings(msg: types.Message):
 
 @router.message(F.text == "➕ Добавить мастера")
 async def admin_add_master(msg: types.Message):
-    await start_add_master_flow(msg)
+    userflow[msg.from_user.id] = {"next": "add_master"}
+
+    kb = types.ReplyKeyboardMarkup(
+        keyboard=[[types.KeyboardButton(text="⬅️ Назад")]],
+        resize_keyboard=True
+    )
+
+    await msg.answer("Введите имя мастера:", reply_markup=kb)
 
 @router.message(F.text == "➖ Удалить мастера")
 async def remove_master_cmd(msg: types.Message):
@@ -46,11 +54,13 @@ async def remove_master_cmd(msg: types.Message):
     if not masters:
         await msg.answer("❌ Нет мастеров для удаления.")
         return
+
     kb = types.ReplyKeyboardMarkup(
-        keyboard = [[KeyboardButton(text=m[1])] for m in masters] + [[KeyboardButton(text="⬅️ Назад")]],
+        keyboard=[[types.KeyboardButton(text=m[1])] for m in masters]
+                 + [[types.KeyboardButton(text="⬅️ Назад")]],
         resize_keyboard=True
     )
-    from flows.universal_router import userflow
+
     userflow[msg.from_user.id] = {"next": "delete_master"}
     await msg.answer("Выберите мастера для удаления:", reply_markup=kb)
 

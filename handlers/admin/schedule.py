@@ -74,7 +74,8 @@ async def set_master_schedule(msg: types.Message, state: FSMContext):
 @router.message(F.text == "Настроить обеденный перерыв")
 async def set_lunch_break(msg: types.Message):
     await msg.answer("Функция настройки обеденного перерыва пока не реализована.")
-    
+
+'''
 @router.message(SetMasterSchedule.waiting_for_master)
 async def schedule_master_selected(msg: types.Message, state: FSMContext):
     master_name = msg.text.strip()
@@ -117,3 +118,4 @@ async def schedule_end_time_received(msg: types.Message, state: FSMContext):
 
     await msg.answer(f"✅ Расписание мастера {master_name} обновлено.\nДни: {', '.join(days)}\nВремя: {start_time}–{end_time}")
     await state.clear()
+'''

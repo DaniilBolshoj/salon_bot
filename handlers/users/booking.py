@@ -8,6 +8,7 @@ from database.schedule import get_master_slots_auto, get_master_days
 from database.services import get_services
 
 # ====== Utils ======
+from handlers.admin.services import get_service_name_by_id
 from utils.userflow import userflow
 from utils.config_loader import BOT_TOKEN
 
@@ -43,8 +44,11 @@ async def book_appointment(msg: types.Message):
         return
 
     kb = InlineKeyboardBuilder()
-    for s in services:
-        kb.button(text=s, callback_data=f"svc:{s}")
+    for service_id, name, _ in services:
+        kb.button(
+            text=name,
+            callback_data=f"svc:{service_id}"
+        )
     kb.adjust(2)
 
     await msg.answer("💇 Выберите услугу:", reply_markup=kb.as_markup())
@@ -53,11 +57,12 @@ async def book_appointment(msg: types.Message):
 # ======================= 2. Выбор мастера ==============================
 @router.callback_query(F.data.startswith("svc:"))
 async def cb_service(callback: CallbackQuery):
-    service = callback.data.split(":", 1)[1]
+    service_id = int(callback.data.split(":", 1)[1])
+    service = await get_service_name_by_id(service_id)
     user_id = callback.from_user.id
 
     userflow[user_id] = {
-        "service": service,
+        "service": service_id,
         "step": "service_chosen"
     }
 
@@ -67,8 +72,11 @@ async def cb_service(callback: CallbackQuery):
         return
 
     kb = InlineKeyboardBuilder()
-    for m in masters:
-        kb.button(text=m, callback_data=f"m:{m}")
+    for master_id, master_name in masters:
+        kb.button(
+            text=master_name,
+            callback_data=f"m:{master_id}"
+        )
     kb.adjust(1)
 
     await callback.message.edit_text(

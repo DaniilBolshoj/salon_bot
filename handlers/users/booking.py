@@ -1,39 +1,23 @@
-from aiogram import types, F, Bot, Router
+from aiogram import types, F, Router
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import CallbackQuery
+from datetime import datetime, timedelta
 
-# ====== Database ======
+from utils.userflow import userflow
+
+# ===== Database =====
 from database.masters import get_masters_by_service, WEEKDAYS
 from database.schedule import get_master_slots_auto, get_master_days
-from database.services import get_services
+from database.services import get_services, get_service_by_id
 
-# ====== Utils ======
-from handlers.admin.services import get_service_name_by_id
-from utils.userflow import userflow
-from utils.config_loader import BOT_TOKEN
-
-# ====== Flow ======
+# ===== Flow =====
 from flows.appointments_flow import (
     validate_phone,
     validate_slot,
-    create_appointment,
-    format_confirmation_message
+    create_appointment
 )
 
-# ====== Standard libs ======
-from datetime import datetime, timedelta
-
 router = Router()
-bot = Bot(token=BOT_TOKEN)
-
-
-# Преобразование даты → weekday
-def weekday_from_date(date_str: str):
-    dt = datetime.strptime(date_str, "%Y-%m-%d")
-    for k, v in WEEKDAYS.items():
-        if v == dt.weekday():
-            return k
-
 
 # ======================= 1. Выбор услуги ===============================
 @router.message(F.text == "📅 Записаться")
@@ -45,10 +29,7 @@ async def book_appointment(msg: types.Message):
 
     kb = InlineKeyboardBuilder()
     for service_id, name, _ in services:
-        kb.button(
-            text=name,
-            callback_data=f"svc:{service_id}"
-        )
+        kb.button(text=name, callback_data=f"svc:{service_id}")
     kb.adjust(2)
 
     await msg.answer("💇 Выберите услугу:", reply_markup=kb.as_markup())
@@ -57,63 +38,62 @@ async def book_appointment(msg: types.Message):
 # ======================= 2. Выбор мастера ==============================
 @router.callback_query(F.data.startswith("svc:"))
 async def cb_service(callback: CallbackQuery):
-    service_id = int(callback.data.split(":", 1)[1])
-    service = await get_service_name_by_id(service_id)
+    service_id = int(callback.data.split(":")[1])
+    service = await get_service_by_id(service_id)
+    service_name = service[1]
     user_id = callback.from_user.id
 
     userflow[user_id] = {
-        "service": service_id,
+        "service_id": service_id,
+        "service_name": service_name,
         "step": "service_chosen"
     }
 
-    masters = await get_masters_by_service(service)
+    masters = await get_masters_by_service(service_id)
     if not masters:
-        await callback.answer(f"❌ Нет мастеров для услуги: {service}", show_alert=True)
+        await callback.answer("❌ Нет мастеров для этой услуги", show_alert=True)
         return
 
     kb = InlineKeyboardBuilder()
     for master_id, master_name in masters:
-        kb.button(
-            text=master_name,
-            callback_data=f"m:{master_id}"
-        )
+        kb.button(text=master_name, callback_data=f"m:{master_id}")
     kb.adjust(1)
 
     await callback.message.edit_text(
-        f"Вы выбрали услугу: <b>{service}</b>\nВыберите мастера:",
-        reply_markup=kb.as_markup()
+        f"Вы выбрали услугу: <b>{service_name}</b>\nВыберите мастера:",
+        reply_markup=kb.as_markup(),
+        parse_mode="HTML"
     )
 
 
 # ======================= 3. Выбор даты ================================
 @router.callback_query(F.data.startswith("m:"))
 async def cb_master(callback: CallbackQuery):
-    master = callback.data.split(":", 1)[1]
+    master_id = int(callback.data.split(":")[1])
     user_id = callback.from_user.id
 
     flow = userflow.get(user_id)
-    if not flow or "service" not in flow:
-        await callback.answer("Сначала выберите услугу!", show_alert=True)
+    if not flow:
+        await callback.answer("Сначала выберите услугу", show_alert=True)
         return
 
-    flow["master"] = master
+    flow["master_id"] = master_id
     flow["step"] = "master_chosen"
-    userflow[user_id] = flow
 
-    master_days = await get_master_days(master)
+    master_days = await get_master_days(master_id)
     if not master_days:
-        await callback.message.edit_text(f"❌ Мастер {master} не имеет рабочих дней.")
+        await callback.message.edit_text("❌ У мастера нет рабочих дней.")
         return
 
-    available_dates = await get_available_dates(master_days, days_ahead=14)
+    dates = await get_available_dates(master_days)
 
     kb = InlineKeyboardBuilder()
-    for d in available_dates:
+    for d in dates:
         kb.button(text=d, callback_data=f"day:{d}")
     kb.adjust(2)
 
     await callback.message.edit_text(
-        f"📅 Доступные дни для мастера <b>{master}</b>:",
+        "📅 Выберите дату:",
         reply_markup=kb.as_markup()
     )
 
@@ -122,71 +102,56 @@ async def cb_master(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("day:"))
 async def cb_day(callback: CallbackQuery):
     user_id = callback.from_user.id
-    if user_id not in userflow or "master" not in userflow[user_id]:
-        await callback.answer("Ошибка: выберите мастера сначала", show_alert=True)
+    flow = userflow.get(user_id)
+
+    if not flow or "master_id" not in flow:
+        await callback.answer("Ошибка", show_alert=True)
         return
 
-    selected_day = callback.data.split(":", 1)[1]
-    await callback.answer()
-    await callback.message.edit_text(f"📅 Вы выбрали дату: <b>{selected_day}</b>")
+    day = callback.data.split(":")[1]
+    flow["day"] = day
 
-    userflow[user_id]["day"] = selected_day
-    master_name = userflow[user_id]["master"]
-
-    slots = await get_master_slots_auto(master_name)
+    slots = await get_master_slots_auto(flow["master_id"])
 
     kb = InlineKeyboardBuilder()
-    for day, time in slots:
-        if day == selected_day:
-            if await validate_slot(master_name, day, time):
-                kb.button(text=time, callback_data=f"slot:{master_name}:{day}:{time}")
+    for d, t in slots:
+        if d == day and await validate_slot(flow["master_id"], d, t):
+            kb.button(text=t, callback_data=f"slot:{t}")
 
     kb.adjust(3)
 
     if not kb.buttons:
-        await callback.answer(
-            f"❌ На {selected_day} у мастера {master_name} нет свободных слотов.",
-            show_alert=True
-        )
+        await callback.answer("❌ Нет свободных слотов", show_alert=True)
         return
 
     await callback.message.edit_text(
-        f"🕓 Доступное время для мастера <b>{master_name}</b> на {selected_day}:",
+        "🕓 Выберите время:",
         reply_markup=kb.as_markup()
     )
 
 
-# ======================= 5. Пользователь выбрал слот ======================
+# ======================= 5. Выбор слота ======================
 @router.callback_query(F.data.startswith("slot:"))
 async def cb_time(callback: CallbackQuery):
-    _, master, day, time = callback.data.split(":")
-
+    time = callback.data.split(":")[1]
     user_id = callback.from_user.id
-    flow = userflow.get(user_id, {})
 
-    flow.update({
-        "master": master,
-        "day": day,
-        "time": time,
-        "step": "await_phone"
-    })
-    userflow[user_id] = flow
+    flow = userflow[user_id]
+    flow["time"] = time
+    flow["step"] = "await_phone"
 
     await callback.message.edit_text(
-        f"📋 <b>Подтверждение записи</b>\n\n"
-        f"💇 Услуга: <b>{flow['service']}</b>\n"
-        f"🧑‍🎨 Мастер: <b>{flow['master']}</b>\n"
+        f"📋 <b>Подтверждение</b>\n\n"
+        f"💇 Услуга: <b>{flow['service_name']}</b>\n"
         f"📅 День: <b>{flow['day']}</b>\n"
-        f"⏰ Время: <b>{flow['time']}</b>\n\n"
-        f"Отправьте свой номер телефона.\nПример: +37060000000",
+        f"⏰ Время: <b>{time}</b>\n\n"
+        f"Отправьте номер телефона (+370...)",
         parse_mode="HTML"
     )
 
-    await callback.answer()
 
-
-# ======================= 6. Пользователь вводит телефон ====================
-@router.message(F.text)
+# ======================= 6. Телефон ====================
+@router.message(F.text & (F.text.startswith("+")))
 async def phone_input(msg: types.Message):
     user_id = msg.from_user.id
     flow = userflow.get(user_id)
@@ -194,27 +159,33 @@ async def phone_input(msg: types.Message):
     if not flow or flow.get("step") != "await_phone":
         return
 
-    phone = msg.text.strip()
-    if not validate_phone(phone):
-        await msg.answer("❌ Неверный формат номера. Пример: +37060000000")
+    if not validate_phone(msg.text):
+        await msg.answer("❌ Неверный формат номера")
         return
 
-    result = await create_appointment(flow, user_id, name=msg.from_user.full_name, phone=phone)
+    result = await create_appointment(
+        flow=flow,
+        user_id=user_id,
+        name=msg.from_user.full_name,
+        phone=msg.text
+    )
 
     if not result["ok"]:
         await msg.answer(f"❌ {result['error']}")
         return
 
     await msg.answer(result["message"], parse_mode="HTML")
-    userflow.pop(user_id, None)
+    userflow.pop(user_id)
 
 
-# ======================= Утилита получения дат ============================
-async def get_available_dates(master_days: list, days_ahead=14):
+# ======================= UTILS ============================
+async def get_available_dates(master_days, days_ahead=14):
     today = datetime.today()
-    available_dates = []
+    result = []
+
     for i in range(days_ahead):
         day = today + timedelta(days=i)
         if day.weekday() in [WEEKDAYS[d] for d in master_days]:
-            available_dates.append(day.strftime("%Y-%m-%d"))
-    return available_dates
+            result.append(day.strftime("%Y-%m-%d"))
+
+    return result

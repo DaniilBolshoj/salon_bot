@@ -15,9 +15,9 @@ from handlers.users.contacts import router as contacts_router
 from handlers.users.reviews import router as feedback_router
 
 from handlers.admin.admin_menu import router as admin_menu_router
-from handlers.admin.masters import router as admin_masters_router
 from handlers.admin.schedule import router as admin_schedule_router
 from handlers.admin.services import router as admin_services_router
+from handlers.admin.masters import router as masters_router
 
 from flows.universal_router import router as universal_router
 
@@ -47,9 +47,9 @@ async def on_startup():
 
     # ADMIN роутеры
     dp.include_router(admin_menu_router)
-    dp.include_router(admin_masters_router)
     dp.include_router(admin_schedule_router)
     dp.include_router(admin_services_router)
+    dp.include_router(masters_router)
 
     # UNIVERSAL FLOW router (замена universal_input_handler)
     dp.include_router(universal_router)

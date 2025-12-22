@@ -5,21 +5,20 @@ WEEKDAYS = {"Пн":0,"Вт":1,"Ср":2,"Чт":3,"Пт":4,"Сб":5,"Вс":6}
 
 # Добавить мастера: services — список строк (имён услуг)
 async def add_master(name, services_list):
+    services_str = ",".join(services_list)
+
     async with aiosqlite.connect(DB_PATH) as db:
-        # Проверяем, есть ли уже мастер с таким именем
         cur = await db.execute("SELECT id FROM masters WHERE name=?", (name,))
         existing = await cur.fetchone()
         if existing:
-            return existing[0]  # возвращаем id существующего мастера
+            return existing[0]
 
-        # Если нет — создаём нового
         await db.execute(
-            "INSERT INTO masters(name) VALUES(?)",
-            (name,)
+            "INSERT INTO masters(name, services) VALUES(?, ?)",
+            (name, services_str)
         )
         await db.commit()
 
-        # Получаем id вновь добавленного мастера
         cur = await db.execute("SELECT id FROM masters WHERE name=?", (name,))
         r = await cur.fetchone()
         return r[0]

@@ -45,6 +45,48 @@ async def show_masters(msg: types.Message):
 
     await msg.answer(text, reply_markup=admin_menu_kb(), parse_mode="HTML")
 
+# =========================================================
+# DELETE MASTER FLOWS
+# =========================================================
+
+@router.message(F.text == "➖ Удалить мастера")
+async def delete_master(msg: types.Message):
+    if msg.from_user.id != OWNER_ID:
+        return
+
+    masters = await get_all_masters()
+    if not masters:
+        await msg.answer("❌ Нет мастеров для удаления.")
+        return
+
+    kb = types.ReplyKeyboardMarkup(
+        keyboard=[[types.KeyboardButton(text=m[1])] for m in masters]
+                 + [[types.KeyboardButton(text="⬅️ Назад")]],
+        resize_keyboard=True
+    )
+
+    userflow[msg.from_user.id] = {"next": "delete_master"}
+    await msg.answer("Выберите мастера для удаления:", reply_markup=kb)
+
+@router.message(F.text)
+async def delete_master_confirm(msg: types.Message):
+    user_id = msg.from_user.id
+    flow = userflow.get(user_id)
+
+    if not flow or flow.get("next") != "delete_master":
+        return
+
+    if msg.text == "⬅️ Назад":
+        userflow.pop(user_id)
+        await msg.answer("Отмена", reply_markup=admin_menu_kb())
+        return
+
+    if await remove_master_by_name(msg.text):
+        await msg.answer(f"🗑 Мастер {msg.text} удалён.", reply_markup=admin_menu_kb())
+    else:
+        await msg.answer("❌ Мастер не найден.")
+
+    userflow.pop(user_id)
 
 # =========================================================
 # ADD MASTER — STEP 1 (NAME)
@@ -64,7 +106,6 @@ async def add_master_start(msg: types.Message, state: FSMContext):
     )
     await state.set_state(AddMasterFSM.waiting_for_name)
 
-
 @router.message(AddMasterFSM.waiting_for_name)
 async def add_master_name(msg: types.Message, state: FSMContext):
     if msg.text == "⬅️ Назад":
@@ -74,7 +115,7 @@ async def add_master_name(msg: types.Message, state: FSMContext):
 
     master_name = msg.text.strip()
 
-    master_id = await add_master(master_name)
+    master_id = await add_master(master_name, services_list=[])
 
     userflow[msg.from_user.id] = {
         "next": "choose_services",
@@ -166,42 +207,3 @@ async def master_schedule_input(msg: types.Message):
 # DELETE MASTER
 # =========================================================
 
-@router.message(F.text == "➖ Удалить мастера")
-async def delete_master(msg: types.Message):
-    if msg.from_user.id != OWNER_ID:
-        return
-
-    masters = await get_all_masters()
-    if not masters:
-        await msg.answer("❌ Нет мастеров для удаления.")
-        return
-
-    kb = types.ReplyKeyboardMarkup(
-        keyboard=[[types.KeyboardButton(text=m[1])] for m in masters]
-                 + [[types.KeyboardButton(text="⬅️ Назад")]],
-        resize_keyboard=True
-    )
-
-    userflow[msg.from_user.id] = {"next": "delete_master"}
-    await msg.answer("Выберите мастера для удаления:", reply_markup=kb)
-
-
-@router.message(F.text)
-async def delete_master_confirm(msg: types.Message):
-    user_id = msg.from_user.id
-    flow = userflow.get(user_id)
-
-    if not flow or flow.get("next") != "delete_master":
-        return
-
-    if msg.text == "⬅️ Назад":
-        userflow.pop(user_id)
-        await msg.answer("Отмена", reply_markup=admin_menu_kb())
-        return
-
-    if await remove_master_by_name(msg.text):
-        await msg.answer(f"🗑 Мастер {msg.text} удалён.", reply_markup=admin_menu_kb())
-    else:
-        await msg.answer("❌ Мастер не найден.")
-
-    userflow.pop(user_id)

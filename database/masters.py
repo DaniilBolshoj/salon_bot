@@ -26,9 +26,9 @@ async def add_master(name, services_list):
 # Получить всех мастеров: возвращает [(id, name), ...]
 async def get_all_masters():
     async with aiosqlite.connect(DB_PATH) as db:
-        cur = await db.execute("SELECT id, name FROM masters ORDER BY name")
+        cur = await db.execute("SELECT id, name, services FROM masters ORDER BY name")
         rows = await cur.fetchall()
-        return [(r[0], r[1]) for r in rows]
+        return rows
 
 # Получить мастеров, которые выполняют услугу по service_id
 # ИД услуги -> сначала получаем её имя, затем ищем по маске в поле services

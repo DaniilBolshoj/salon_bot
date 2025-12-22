@@ -8,11 +8,19 @@ async def add_master(name, services_list):
     services_str = ",".join(services_list)
 
     async with aiosqlite.connect(DB_PATH) as db:
+        # Проверяем, есть ли уже мастер
         cur = await db.execute("SELECT id FROM masters WHERE name=?", (name,))
         existing = await cur.fetchone()
         if existing:
+            # обновляем услуги, если мастер уже есть
+            await db.execute(
+                "UPDATE masters SET services=? WHERE id=?",
+                (services_str, existing[0])
+            )
+            await db.commit()
             return existing[0]
 
+        # создаём нового мастера
         await db.execute(
             "INSERT INTO masters(name, services) VALUES(?, ?)",
             (name, services_str)
@@ -20,8 +28,8 @@ async def add_master(name, services_list):
         await db.commit()
 
         cur = await db.execute("SELECT id FROM masters WHERE name=?", (name,))
-        r = await cur.fetchone()
-        return r[0]
+        return (await cur.fetchone())[0]
+
 
 # Получить всех мастеров: возвращает [(id, name), ...]
 async def get_all_masters():

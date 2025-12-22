@@ -2,7 +2,7 @@ from aiogram import Router, F, types
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from utils.userflow import userflow
-from database.masters import WEEKDAYS
+from database.masters import WEEKDAYS, add_master
 
 router = Router()
 
@@ -38,8 +38,16 @@ async def adm_finish_services_cb(c: types.CallbackQuery):
         await c.answer("❌ Выберите услуги.")
         return
 
-    flow["next"] = "choose_days"
-    flow["selected_days"] = []
+    flow = userflow[user_id]
+
+    master_id = await add_master(
+        flow["master_name"],
+        flow["selected_services"]
+    )
+
+    flow["master_id"] = master_id
+    flow["next"] = "ask_start_time"
+
 
     await c.message.answer("Выберите рабочие дни мастера:")
     await send_days_keyboard(c.message, flow)

@@ -75,7 +75,7 @@ async def set_lunch_break(msg: types.Message):
 
 # ====== Возврат в админ меню ======
 # Для текстового сообщения
-@router.message(F.text == "⬅ Назад в меню")
+@router.message(F.text == "⬅️ Назад в меню")
 async def back_to_admin_menu_msg(msg: Message):
     await msg.answer(
         "Вы в главном меню администратора.",

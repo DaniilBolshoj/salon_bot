@@ -213,3 +213,5 @@ async def vacation_set(msg, state: FSMContext):
     await set_master_vacation(master_name)
     await msg.answer(f"🌴 Мастер {master_name} отправлен в отпуск.")
     await state.clear()
+
+

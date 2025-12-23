@@ -1,7 +1,17 @@
 import phonenumbers
 from database import get_dates_window
 
-userflow = {}  # user_id: {"service": str, "master": str, "day": str, "time": str, "step": str}
+# Глобальное хранилище flow
+userflow: dict[int, dict] = {}
+
+
+def init_admin_master_flow(user_id: int, master_name: str):
+    userflow[user_id] = {
+        "master_name": master_name,
+        "selected_services": [],
+        "selected_days": [],
+        "next": "choose_services"
+    }
 
 def validate_phone_format(phone: str) -> bool:
     try:

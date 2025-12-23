@@ -6,6 +6,8 @@ from aiogram.enums import ParseMode
 from utils.config_loader import BOT_TOKEN
 from database import init_db
 from database.db import service_db
+from database.services import init_services_table
+from database.masters import init_masters_table, init_master_services
 
 # Новые маршрутизаторы
 from handlers.users.start import router as start_router
@@ -32,8 +34,12 @@ dp = Dispatcher()
 
 async def on_startup():
     print("🔄 Инициализация базы данных...")
-    await init_db()
-    await service_db()
+
+    await init_db()                   # общая инициализация (если есть)
+    await init_services_table()       # таблица services
+    await init_masters_table()        # таблица masters
+    await init_master_services()      # таблица связей master_services
+
     print("✅ База данных готова.")
 
     print("🔗 Подключение роутеров...")
@@ -51,7 +57,7 @@ async def on_startup():
     dp.include_router(admin_services_router)
     dp.include_router(masters_router)
 
-    # UNIVERSAL FLOW router (замена universal_input_handler)
+    # UNIVERSAL FLOW router
     dp.include_router(universal_router)
 
     print("✅ Все хэндлеры успешно подключены.")
